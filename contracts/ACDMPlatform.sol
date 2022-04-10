@@ -123,7 +123,7 @@ contract ACDMPlatform is ReentrancyGuard {
 
         //calc mNumTokensForSale
         //The number of issued tokens in each Sale round is different and depends on the total volume of trades in the Trade round.
-        mNumTokensForSale = (mTotalValueTradeRound / mPrice) * 1e18;
+        mNumTokensForSale = (mTotalValueTradeRound * 1e18) / mPrice;
 
         //mint tokens
         mACDMToken.mint(address(this), mNumTokensForSale);
@@ -146,7 +146,7 @@ contract ACDMPlatform is ReentrancyGuard {
         bool res;
 
         //calc amount of tokens
-        uint256 amountToBuy = (msg.value / mPrice) * 1e18;
+        uint256 amountToBuy = (msg.value * 1e18) / mPrice;
 
         require(mNumTokensForSale >= amountToBuy, "Not enough tokens");
         mNumTokensForSale -= amountToBuy;
@@ -224,7 +224,7 @@ contract ACDMPlatform is ReentrancyGuard {
         Order storage order = orders[orderId];
 
         //calc amount of tokens
-        uint256 amountToBuy = (msg.value / order.price) * 1e18;
+        uint256 amountToBuy = (msg.value * 1e18) / order.price;
 
         require(order.amount >= amountToBuy, "Not enough tokens");
         order.amount -= amountToBuy;

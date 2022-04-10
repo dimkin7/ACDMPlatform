@@ -31,9 +31,9 @@ describe("ACDMPlatform", function () {
 
   it("Check balance", async function () {
     let balance = await ethers.provider.getBalance(platform.address);
-    expect(ethers.utils.parseEther("0.0")).to.equal(balance);
+    expect(balance).to.equal(0);
     balance = await ethers.provider.getBalance(user1.address);
-    expect(ethers.utils.parseEther("10000.0")).to.equal(balance);
+    expect(ethers.utils.parseEther("10000")).to.equal(balance);
   });
 
   it("Register", async function () {
@@ -48,29 +48,62 @@ describe("ACDMPlatform", function () {
     await platform.startSaleRound();
     //в первом раунде продается 100 000 токенов
     expect(await platform.mNumTokensForSale())
-      .to.equal(ethers.utils.parseEther("100000.0"));
+      .to.equal(ethers.utils.parseEther("100000"));
 
     expect(await token.balanceOf(platform.address))
-      .to.equal(ethers.utils.parseEther("100000.0"));
+      .to.equal(ethers.utils.parseEther("100000"));
 
     expect(await platform.mPrice())
       .to.equal(ethers.utils.parseEther("0.00001"));
   });
 
   it("Sale round 1 - user1 - 100 tokens", async function () {
-    //event BuyACDM(address, uint256);
+    //event BuyACDM(user, amount);
     await expect(platform.connect(user1).buyACDM({ value: ethers.utils.parseEther("0.001") }))
       .to.emit(platform, "BuyACDM")
-      .withArgs(user1.address, ethers.utils.parseEther("100.0"));
+      .withArgs(user1.address, ethers.utils.parseEther("100"));
 
     expect(await token.balanceOf(user1.address))
-      .to.equal(ethers.utils.parseEther("100.0"));
+      .to.equal(ethers.utils.parseEther("100"));
 
     let balance = await ethers.provider.getBalance(platform.address);
-    expect(ethers.utils.parseEther("0.001")).to.equal(balance);
+    expect(balance).to.equal(ethers.utils.parseEther("0.001"));
+  });
+
+  it("Sale round 1 - user2 - 0,1 tokens", async function () {
+    let user1_balance_before = await ethers.provider.getBalance(user1.address);
+
+    await expect(platform.connect(user2).buyACDM({ value: ethers.utils.parseEther("0.000001") }))
+      .to.emit(platform, "BuyACDM")
+      .withArgs(user2.address, ethers.utils.parseEther("0.1"));
+
+    expect(await token.balanceOf(user2.address))
+      .to.equal(ethers.utils.parseEther("0.1"));
+
+    let balance = await ethers.provider.getBalance(platform.address);
+    expect(balance).to.equal(ethers.utils.parseEther("0.00100095"));
+
+    let user1_balance_after = await ethers.provider.getBalance(user1.address);
+    expect(user1_balance_after.sub(user1_balance_before)).to.equal(ethers.utils.parseEther("0.00000005"));
   });
 
   //buyACDM user1-3
+  it("Sale round 1 - user3 - 5 tokens", async function () {
+    let user1_balance_before = await ethers.provider.getBalance(user1.address);
+    let platform_balance_before = await ethers.provider.getBalance(platform.address);
+
+    await expect(platform.connect(user3).buyACDM({ value: ethers.utils.parseEther("0.00005") }))
+      .to.emit(platform, "BuyACDM")
+      .withArgs(user3.address, ethers.utils.parseEther("5"));
+
+    expect(await token.balanceOf(user3.address))
+      .to.equal(ethers.utils.parseEther("5"));
+
+    let user1_balance_after = await ethers.provider.getBalance(user1.address);
+    expect(user1_balance_after.sub(user1_balance_before)).to.equal(ethers.utils.parseEther("0.0000015"));
+    let platform_balance_after = await ethers.provider.getBalance(platform.address);
+    expect(platform_balance_after.sub(platform_balance_before)).to.equal(ethers.utils.parseEther("0.000046"));
+  });
 
   ///********************
   it("Wait 3 days", async function () {
@@ -78,38 +111,62 @@ describe("ACDMPlatform", function () {
   });
   ///********************
 
-  it("Trade round 1", async function () {
+  it("Trade round 1 user1 addOrder", async function () {
     await platform.startTradeRound();
+    await token.connect(user1).approve(platform.address, ethers.utils.parseEther("100"));
 
-    //user1 addOrder
-    //user1 removeOrder
-    //user2 addOrder
+    //event AddOrder(orderId, amount, price);
+    await expect(platform.connect(user1).addOrder(ethers.utils.parseEther("100"), ethers.utils.parseEther("0.02")))
+      .to.emit(platform, "AddOrder")
+      .withArgs(1, ethers.utils.parseEther("100"), ethers.utils.parseEther("0.02"));
+  });
+  it("Trade round 1 user3 redeemOrder", async function () {
+    //event RedeemOrder(user, orderId, amount);
+    await expect(platform.connect(user3).redeemOrder(1, { value: ethers.utils.parseEther("0.03") }))
+      .to.emit(platform, "RedeemOrder")
+      .withArgs(user3.address, 1, ethers.utils.parseEther("1.5"));
+  });
 
-    //user3 redeemOrder
+  it("Trade round 1 user1 removeOrder", async function () {
+    //event RemoveOrder(orderId);
+    await expect(platform.connect(user1).removeOrder(1))
+      .to.emit(platform, "RemoveOrder")
+      .withArgs(1);
+
+    expect(await token.balanceOf(user1.address))
+      .to.equal(ethers.utils.parseEther("98.5"));
+  });
+
+  ///********************
+  it("Wait 3 days", async function () {
+    await network.provider.send("evm_increaseTime", [60 * 60 * 24 * 3]);
+  });
+  ///********************
+
+
+  it("Sale round 2 - prepare", async function () {
+    await platform.startSaleRound();
+
+    expect(await platform.mPrice())
+      .to.equal(ethers.utils.parseEther("0.0000143")); //цена токена в раунде 2 =	0,0000143
+
+    // //в первом раунде продается 100 000 токенов
+    // expect(await platform.mNumTokensForSale())
+    //   .to.equal(ethers.utils.parseEther("100000"));
+
+    // expect(await token.balanceOf(platform.address))
+    //   .to.equal(ethers.utils.parseEther("100000"));
 
   });
 
 
-  //startSaleRound
 
+  //user2 addOrder
+  //Раунд может закончиться досрочно если все токены были распроданы. 
+  //По окончанию раунда не распроданные токены сжигаются.
 });
 
 /*
-Есть 2 раунда «Торговля» и «Продажа», которые следуют друг за другом, начиная с раунда продажи.
-
-Каждый раунд длится 3 дня.
-
-Основные понятия:
-
-Раунд «Sale» - В данном раунде пользователь может купить токены ACDM по фиксируемой цене у платформы за ETH.
-
-Раунд «Trade» - в данном раунде пользователи могут выкупать друг у друга токены ACDM за ETH.
-
-Реферальная программа — реферальная программа имеет два уровня, пользователи получают реварды в ETH.
-
-Описание раунда «Sale»:
-
-Цена токена с каждым раундом растет и рассчитывается по формуле (смотри excel файл). Количество выпущенных токенов в каждом Sale раунде разное и зависит от общего объема торгов в раунде «Trade». Раунд может закончиться досрочно если все токены были распроданы. По окончанию раунда не распроданные токены сжигаются. Самый первый раунд продает токенны на сумму 1ETH (100 000 ACDM)
 
 Пример расчета:
 
@@ -119,9 +176,11 @@ describe("ACDMPlatform", function () {
 
 следовательно в Sale раунде будет доступно к продаже 26737.96 токенов ACDM.
 
+
 Описание раунда «Trade»:
 
 user_1 выставляет ордер на продажу ACDM токенов за определенную сумму в ETH. User_2 выкупает токены за ETH. Ордер может быть выкуплен не полностью. Также ордер можно отозвать и пользователю вернутся его токены, которые еще не были проданы. Полученные ETH сразу отправляются пользователю в их кошелек metamask. По окончанию раунда все открытые ордера закрываются и оставшиеся токены отправляются их владельцам.
+
 
 Описание Реферальной программы:
 
@@ -131,9 +190,8 @@ user_1 выставляет ордер на продажу ACDM токенов �
 
 При покупке в Trade раунде пользователь, который выставил ордер на продажу ACDM токенов получит 95% ETH и по 2,5% получат рефереры, в случае их отсутствия платформа забирает эти проценты себе.
 
-Price ETH = lastPrice*1,03+0,000004
 
-Пример расчета цены токена: 0,0000100*1,03+0,000004 = 0,0000143
+
 
 
 Sale Round N	Price ETH
