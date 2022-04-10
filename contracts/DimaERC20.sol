@@ -27,6 +27,13 @@ contract DimaERC20 is ERC20, AccessControl {
         revokeRole(PLATFORM_ROLE, platform);
     }
 
+    function mint(address account, uint256 amount)
+        public
+        onlyRole(PLATFORM_ROLE)
+    {
+        _mint(account, amount);
+    }
+
     function burn(address from, uint256 amount) public onlyRole(PLATFORM_ROLE) {
         _burn(from, amount);
     }
