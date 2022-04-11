@@ -130,7 +130,7 @@ contract ACDMPlatform is ReentrancyGuard {
 
         //remove orders
         for (uint256 i = 0; i < mActiveOrdersSet.length(); i++) {
-            Order memory order = orders[i];
+            Order memory order = orders[mActiveOrdersSet.at(i)];
             delete orders[i];
             bool res = mACDMToken.transfer(order.owner, order.amount);
             require(res, "Tokens transfer error");
@@ -185,6 +185,9 @@ contract ACDMPlatform is ReentrancyGuard {
     }
 
     function addOrder(uint256 amount, uint256 price) external {
+        //round 0 is pseudo Trade
+        require(mRoundStartedTime != 0, "Platform not ready yet");
+
         bool res = mACDMToken.transferFrom(msg.sender, address(this), amount);
         require(res, "Tokens transfer error");
 
