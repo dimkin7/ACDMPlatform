@@ -19,7 +19,6 @@ let platform_balance_before: BigNumber;
 let platform_balance_after: BigNumber;
 
 
-
 describe("ACDMPlatform", function () {
   before(async function () {
     [owner, user1, user2, user3] = await ethers.getSigners();
