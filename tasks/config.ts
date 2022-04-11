@@ -1,0 +1,2 @@
+export const Token = "0xa6e926F95CCdC5d00DCd4884a97D3a0b0e196FFD";
+export const Platform = "0xa46225E1312139086CC70856Aa84D36D9a7c516d";

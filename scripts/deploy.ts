@@ -1,29 +1,27 @@
-// We require the Hardhat Runtime Environment explicitly here. This is optional
-// but useful for running the script in a standalone fashion through `node <script>`.
-//
-// When running the script with `npx hardhat run <script>` you'll find the Hardhat
-// Runtime Environment's members available in the global scope.
-import { ethers } from "hardhat";
+import { ethers, config } from "hardhat";
 
 async function main() {
-  // Hardhat always runs the compile task when running scripts with its command
-  // line interface.
-  //
-  // If this script is run directly using `node` you may want to call compile
-  // manually to make sure everything is compiled
-  // await hre.run('compile');
+  const [owner] = await ethers.getSigners();
+  console.log("Deploying contracts with the account:", owner.address);
 
-  // We get the contract to deploy
-  const Greeter = await ethers.getContractFactory("Greeter");
-  const greeter = await Greeter.deploy("Hello, Hardhat!");
+  //deploy ERC20
+  const factoryERC20 = await ethers.getContractFactory("DimaERC20");
+  const token = await factoryERC20.deploy("Dima ERC20 2022.04.09", "DIMA_220409", 0);
+  await token.deployed();
+  console.log("DimaERC20:", token.address);
+  const decimals = await token.decimals();
 
-  await greeter.deployed();
+  //deploy Platform  
+  const factoryPlatform = await ethers.getContractFactory("ACDMPlatform");
+  //3 days
+  const platform = await factoryPlatform.deploy(token.address, 3 * 24 * 60 * 60);
+  await platform.deployed();
+  console.log("ACDMPlatform:", platform.address);
 
-  console.log("Greeter deployed to:", greeter.address);
+  await token.addPlatform(platform.address);
 }
 
-// We recommend this pattern to be able to use async/await everywhere
-// and properly handle errors.
+// run
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;
